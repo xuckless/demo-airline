@@ -98,7 +98,7 @@ export async function seedAll(q: Queryable, { today, nowMs, log = () => {} }: Se
   );
   await resetSequences(q);
   await q.query("ANALYZE");
-  await q.query("CHECKPOINT");
+  await q.query("CHECKPOINT").catch(() => {}); // not permitted on managed Postgres
   await writeState(q, {
     rng_seed: rngSeed,
     scale,

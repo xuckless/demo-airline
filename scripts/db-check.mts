@@ -1,9 +1,10 @@
-// Verify inventory consistency and print load factors by days out.
-import { DATA_DIR, openDb } from "@/db/client";
+// Verify inventory consistency and print load factors by days out. Add --cloud for Supabase.
+import "./_env.mts";
+import { openConfigured } from "@/db/client";
 import { checkConsistency } from "@/db/seed/check";
 import { today } from "@/lib/clock";
 
-const h = await openDb({ dir: DATA_DIR, holder: "db:check" });
+const h = await openConfigured("db:check", { migrate: false });
 try {
   const r = await checkConsistency(h.pg, today());
   console.table(r.counts);

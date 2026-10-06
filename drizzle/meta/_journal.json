@@ -8,6 +8,13 @@
       "when": 1791323336215,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791326410962,
+      "tag": "0001_enable_rls",
+      "breakpoints": true
     }
   ]
 }

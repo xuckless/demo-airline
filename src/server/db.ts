@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import { getDb } from "@/db/client";
 import { prepareDb } from "@/db/prepare";
 import { nowMs, today } from "@/lib/clock";
@@ -21,6 +22,13 @@ export async function appDb() {
       }),
     };
   }
-  await g.__demoFresh.p;
+  if (h.pg.kind === "postgres") {
+    // Hosted: never make a visitor wait for the daily roll-forward; finish it after the response.
+    try {
+      after(() => g.__demoFresh?.p);
+    } catch {}
+  } else {
+    await g.__demoFresh.p;
+  }
   return h;
 }

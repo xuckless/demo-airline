@@ -1,4 +1,4 @@
-import type { PGlite } from "@electric-sql/pglite";
+import type { SqlDb } from "../sql";
 import { seedConfig } from "@/config/seed";
 import { mulberry32, hash32 } from "@/domain/rng";
 import { generateSchedules, type Schedule } from "@/domain/schedule/generateSchedules";
@@ -24,13 +24,18 @@ export interface TickResult {
  * future flights along the booking curve, and purge old simulated history.
  * Idempotent per day.
  */
-export async function tick(pg: PGlite, today: DateStr, nowMs: number, log: (m: string) => void = () => {}): Promise<TickResult> {
+export async function tick(pg: SqlDb, today: DateStr, nowMs: number, log: (m: string) => void = () => {}): Promise<TickResult> {
   const state = await readState(pg);
   if (!state.last_tick_date) throw new Error("Database is not seeded");
   if (state.last_tick_date >= today) return { skipped: true, newFlights: 0, newBookings: 0, purgedBookings: 0 };
 
   const { horizonDays, pastDays, scale } = seedConfig;
   return pg.transaction(async (tx) => {
+    // Serverless instances may race to roll forward; only one wins, the rest skip.
+    const { rows: lock } = await tx.query<{ ok: boolean }>(`SELECT pg_try_advisory_xact_lock(4242) AS ok`);
+    if (!lock[0]?.ok) return { skipped: true, newFlights: 0, newBookings: 0, purgedBookings: 0 };
+    const fresh = await readState(tx);
+    if (fresh.last_tick_date >= today) return { skipped: true, newFlights: 0, newBookings: 0, purgedBookings: 0 };
     // 1. Extend schedules if the lookahead is running out.
     let schedulesUntil = state.schedules_until;
     if (schedulesUntil < addDays(today, horizonDays + 30)) {

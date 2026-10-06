@@ -1,9 +1,10 @@
-import type { PGlite, Transaction } from "@electric-sql/pglite";
 import type { Cabin } from "@/config/fleet";
 import { ROUTE_BY_ID } from "@/domain/network";
 import type { FlightLeg } from "@/domain/types";
 
-export type Queryable = Pick<PGlite | Transaction, "query">;
+import type { Sql } from "../sql";
+
+export type Queryable = Sql;
 
 interface FlightRow {
   id: number;

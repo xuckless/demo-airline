@@ -1,4 +1,4 @@
-import type { PGlite } from "@electric-sql/pglite";
+import type { Sql } from "./sql";
 
 type Cell = string | number | boolean | null | undefined | Date;
 
@@ -9,17 +9,13 @@ const esc = (v: Cell): string => {
   return /[\t\n\\\r]/.test(s) ? s.replace(/\\/g, "\\\\").replace(/\t/g, "\\t").replace(/\n/g, "\\n").replace(/\r/g, "\\r") : s;
 };
 
-/**
- * Fast bulk load via PGlite's COPY FROM '/dev/blob' (text format).
- * Kept behind this module so a node-postgres COPY stream can replace it for Supabase.
- */
-export async function copyRows(pg: Pick<PGlite, "query">, table: string, columns: string[], rows: Iterable<Cell[]>, chunk = 50_000) {
+/** Fast bulk load via COPY (PGlite blob locally, COPY FROM STDIN on Postgres). */
+export async function copyRows(q: Sql, table: string, columns: string[], rows: Iterable<Cell[]>, chunk = 50_000) {
   let buf: string[] = [];
   let n = 0;
   const flush = async () => {
     if (!buf.length) return;
-    const blob = new Blob([buf.join("\n") + "\n"]);
-    await pg.query(`COPY ${table} (${columns.join(", ")}) FROM '/dev/blob'`, [], { blob });
+    await q.copyText(table, columns, buf.join("\n") + "\n");
     buf = [];
   };
   for (const r of rows) {

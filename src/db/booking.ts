@@ -7,7 +7,7 @@ import { HOUR } from "@/domain/time";
 import type { BrandOffer, FlightLeg, Pax } from "@/domain/types";
 import { ageError, type BookingForm } from "@/lib/bookingSchema";
 import type { Selection, TripSearch } from "@/lib/searchParams";
-import type { PGlite } from "@electric-sql/pglite";
+import type { SqlDb } from "./sql";
 
 export type BookingResult =
   | { ok: true; pnr: string }
@@ -60,7 +60,7 @@ export interface CreateBookingInput {
   acceptedTotalCents?: number;
 }
 
-export async function createBooking(pg: PGlite, input: CreateBookingInput, t: string, now: number): Promise<BookingResult> {
+export async function createBooking(pg: SqlDb, input: CreateBookingInput, t: string, now: number): Promise<BookingResult> {
   const { search, form } = input;
 
   // Passenger list must match the searched party.

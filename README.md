@@ -21,6 +21,7 @@ Open http://localhost:3000. The first run builds ~43k flights and ~850k simulate
 | `pnpm db:check` | inventory ⇄ bookings consistency + load factor by days-out |
 | `pnpm net:check` | how many O&D markets have no itinerary on sample days |
 | `pnpm test` | unit tests (pricing, search, schedules) + DB integration tests (in-memory PGlite) |
+| `pnpm db:* --cloud` | same commands against Supabase (`SUPABASE_DB_URL` in `.env`) |
 | `pnpm db:generate` | generate a Drizzle migration after editing `src/db/schema.ts` |
 
 **PGlite is single-process.** While `next dev` runs it holds `.data/pglite.lock`; CLI `db:*` scripts refuse to run.
@@ -49,5 +50,15 @@ Knobs (env): `SEED_SCALE` (frequency multiplier, default 1), `HORIZON_DAYS` (120
 - **Booking** — `src/db/booking.ts`: re-validates and re-prices inside a transaction, guarded inventory
   decrement (no oversell), price-changed confirmation, 6-char PNR.
 
-Moving to Supabase later: the schema/migrations are plain Postgres; swap `src/db/client.ts` to a
-postgres driver on `DATABASE_URL` and replace the PGlite COPY in `src/db/bulk.ts`.
+## Hosted database (Supabase) & Vercel
+
+When `DATABASE_URL` is set the app uses node-postgres instead of PGlite (`src/db/client.ts`, `src/db/sql.ts`).
+Hosted worlds are smaller to fit the free tier: 60 bookable days + 3 days of history (~340 MB).
+
+- `.env` (gitignored) holds `SUPABASE_DB_URL` — the **session** pooler URL (port 5432), used by CLI scripts:
+  `pnpm db:setup --cloud` (migrate + seed if empty, else roll forward), `pnpm db:check --cloud`,
+  `pnpm db:tick --cloud`, `pnpm db:reset --cloud` (wipe + reseed, ~4–5 min).
+- On Vercel set `DATABASE_URL` to the **transaction** pooler URL (same, port 6543). The app never seeds in
+  production; it rolls the window forward in the background on the first request of each day.
+- RLS is enabled on every table with no policies, so Supabase's public REST API exposes nothing; the app
+  connects as the database owner.
